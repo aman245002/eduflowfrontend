@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - echo "VITE_API_URL=http://eduflow-etailed-v2-env-1.eba-92cp2rjx.ap-south-1.elasticbeanstalk.com" >> .env
     build:
       commands:
         - npm run build

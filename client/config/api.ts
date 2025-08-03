@@ -124,6 +124,9 @@ export const getAuthHeaders = (token?: string) => {
   };
 
   if (token) {
+    // Use custom header for CloudFront compatibility
+    headers["X-Auth-Token"] = token;
+    // Keep Authorization as fallback for direct API calls
     headers["Authorization"] = `Bearer ${token}`;
   }
 
