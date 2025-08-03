@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   FileText,
@@ -16,8 +16,6 @@ import AppLayout from "@/components/layout/AppLayout";
 import QuizAttempt from "@/components/QuizAttempt";
 import { toast } from "sonner";
 
-import { BACKEND_URL } from '@/config/urls';
-
 export default function LessonViewer() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -28,6 +26,8 @@ export default function LessonViewer() {
   const [loading, setLoading] = useState(true);
   const [attemptLoading, setAttemptLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pdfViewMode, setPdfViewMode] = useState<{[key: string]: 'preview' | 'download'}>({});
+  const [pdfLoading, setPdfLoading] = useState<{[key: string]: boolean}>({});
 
   const token = localStorage.getItem("token");
 
@@ -35,7 +35,7 @@ export default function LessonViewer() {
   useEffect(() => {
     const fetchLesson = async () => {
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/lessons/${id}`);
+        const res = await axios.get(URLS.API.LESSONS.DETAIL(id));
         setLesson(res.data.data);
       } catch (err) {
         console.error("Error fetching lesson:", err);
@@ -53,9 +53,7 @@ export default function LessonViewer() {
     const fetchQuiz = async () => {
       if (lesson?.quiz && typeof lesson.quiz === "string") {
         try {
-          const res = await axios.get(
-            `${BACKEND_URL}/api/quizzes/${lesson.quiz}`,
-          );
+          const res = await axios.get(URLS.API.QUIZZES.DETAIL(lesson.quiz));
           setQuiz(res.data?.data?.questions?.length ? res.data.data : null);
         } catch (err) {
           console.error("Error fetching quiz:", err);
@@ -77,18 +75,16 @@ export default function LessonViewer() {
       if (!quiz || !lesson?._id) return;
       setAttemptLoading(true);
       try {
-        const res = await axios.get(
-          `${BACKEND_URL}/api/quiz-attempts/${lesson._id}/latest`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const res = await axios.get(URLS.API.QUIZ_ATTEMPTS.LATEST(lesson._id), {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
         setAttempt(res.data.data);
-      } catch {
+      } catch (err) {
+        console.error("Error fetching quiz attempt:", err);
         setAttempt(null);
-        toast.error("❌ Failed to load quiz attempt.");
+        // Don't show error toast for no attempts - this is normal
       } finally {
         setAttemptLoading(false);
       }
@@ -101,14 +97,11 @@ export default function LessonViewer() {
     const fetchProgress = async () => {
       if (!token || !lesson?._id) return;
       try {
-        const res = await axios.get(
-          `${BACKEND_URL}/api/progress/lesson/${lesson._id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const res = await axios.get(URLS.API.PROGRESS.LESSON(lesson._id), {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
+        });
         setDone(res.data?.data?.completed || false);
       } catch {
         setDone(false);
@@ -121,7 +114,7 @@ export default function LessonViewer() {
   const handleMarkAsDone = async () => {
     try {
       await axios.post(
-        `${BACKEND_URL}/api/progress/mark-done`,
+        URLS.API.PROGRESS.MARK_DONE,
         { lessonId: lesson._id },
         {
           headers: {
@@ -142,7 +135,7 @@ export default function LessonViewer() {
       return;
     }
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/lessons/${id}/next`);
+      const res = await axios.get(URLS.API.LESSONS.NEXT(id));
       const nextLesson = res.data?.data;
       if (nextLesson?._id) {
         navigate(`/lesson/${nextLesson._id}`);
@@ -156,7 +149,7 @@ export default function LessonViewer() {
 
   const handlePreviousLesson = async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/lessons/${id}/prev`);
+      const res = await axios.get(URLS.API.LESSONS.PREV(id));
       const prevLesson = res.data?.data;
       if (prevLesson?._id) {
         navigate(`/lesson/${prevLesson._id}`);
@@ -192,14 +185,20 @@ export default function LessonViewer() {
         {/* Attachments */}
         {lesson.attachments?.length > 0 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Attachments</h2>
+            <h2 className="text-xl font-semibold">
+              Attachments ({lesson.attachments.length} file
+              {lesson.attachments.length !== 1 ? "s" : ""})
+            </h2>
             {lesson.attachments.map((file: any) => {
-              const fileUrl = `${BACKEND_URL}/uploads/lessons/${file.filename}`;
+              const fileUrl = URLS.FILES.UPLOAD(file.url);
               const isVideo = file.type.startsWith("video/");
               const isPDF = file.type === "application/pdf";
 
               return (
-                <div key={file.filename} className="space-y-2">
+                <div
+                  key={file.filename}
+                  className="space-y-2 p-4 border rounded-lg bg-gray-50"
+                >
                   <div className="flex items-center gap-3">
                     {isVideo ? (
                       <Video className="text-blue-600" />
@@ -207,27 +206,103 @@ export default function LessonViewer() {
                       <FileText className="text-blue-600" />
                     )}
                     <span className="font-medium">{file.original_name}</span>
-                    <a
-                      href={fileUrl}
-                      download={file.original_name}
-                      className="ml-2 inline-flex items-center px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-100"
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Download
-                    </a>
+                    <span className="text-sm text-gray-500">
+                      ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </span>
+                    {file.is_downloadable && (
+                      <a
+                        href={fileUrl}
+                        download={file.original_name}
+                        className="ml-2 inline-flex items-center px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-100"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Download
+                      </a>
+                    )}
                   </div>
                   {isVideo && (
                     <video controls className="w-full max-w-3xl rounded shadow">
                       <source src={fileUrl} type={file.type} />
                     </video>
                   )}
-                  {isPDF && (
-                    <iframe
-                      src={fileUrl}
-                      title="PDF Preview"
-                      className="w-full h-[600px] border rounded"
-                    />
-                  )}
+                                     {isPDF && (
+                     <div className="space-y-2">
+                       <div className="flex gap-2 mb-2 items-center">
+                         <div className="flex gap-1">
+                           <button
+                             onClick={() => {
+                               setPdfViewMode(prev => ({...prev, [file.filename]: 'preview'}));
+                               setPdfLoading(prev => ({...prev, [file.filename]: true}));
+                             }}
+                             className={`px-3 py-1 text-sm rounded ${
+                               pdfViewMode[file.filename] !== 'download' 
+                                 ? 'bg-blue-600 text-white' 
+                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                             }`}
+                           >
+                             Preview
+                           </button>
+                           <button
+                             onClick={() => setPdfViewMode(prev => ({...prev, [file.filename]: 'download'}))}
+                             className={`px-3 py-1 text-sm rounded ${
+                               pdfViewMode[file.filename] === 'download' 
+                                 ? 'bg-blue-600 text-white' 
+                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                             }`}
+                           >
+                             Download Only
+                           </button>
+                         </div>
+                         <a
+                           href={fileUrl}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                         >
+                           <FileText className="w-4 h-4 mr-1" />
+                           Open in New Tab
+                         </a>
+                       </div>
+                       
+                       {pdfViewMode[file.filename] !== 'download' && (
+                         <div className="border rounded-lg overflow-hidden bg-white relative">
+                           {pdfLoading[file.filename] && (
+                             <div className="absolute inset-0 flex items-center justify-center bg-white">
+                               <div className="text-center">
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                 <p className="text-gray-600">Loading PDF...</p>
+                               </div>
+                             </div>
+                           )}
+                           <iframe
+                             src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(fileUrl)}`}
+                             title={`PDF Preview - ${file.original_name}`}
+                             className="w-full h-[600px] border-0"
+                             sandbox="allow-same-origin allow-scripts allow-forms"
+                             onLoad={() => setPdfLoading(prev => ({...prev, [file.filename]: false}))}
+                             onError={() => {
+                               setPdfLoading(prev => ({...prev, [file.filename]: false}));
+                               setPdfViewMode(prev => ({...prev, [file.filename]: 'download'}));
+                             }}
+                           />
+                         </div>
+                       )}
+                       
+                       {pdfViewMode[file.filename] === 'download' && (
+                         <div className="border rounded-lg p-4 bg-gray-50 text-center">
+                           <p className="text-gray-600 mb-3">PDF preview disabled</p>
+                           <a
+                             href={fileUrl}
+                             download={file.original_name}
+                             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                           >
+                             <Download className="w-4 h-4 mr-2" />
+                             Download PDF
+                           </a>
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
               );
             })}

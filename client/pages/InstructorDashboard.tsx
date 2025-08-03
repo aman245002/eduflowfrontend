@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +111,7 @@ export default function InstructorDashboard() {
 
     const token = localStorage.getItem("token");
     const url = isEditMode
-              ? URLS.API.COURSES.UPDATE(editingCourse?._id)
+      ? URLS.API.COURSES.UPDATE(editingCourse?._id)
       : URLS.API.COURSES.LIST;
     const method = isEditMode ? "PUT" : "POST";
 
@@ -149,16 +149,14 @@ export default function InstructorDashboard() {
     });
     setThumbnail(null);
     setThumbnailPreview(
-      course.thumbnail_url
-        ? URLS.FILES.THUMBNAIL(course.thumbnail_url)
-        : null,
+      course.thumbnail_url ? URLS.FILES.THUMBNAIL(course.thumbnail_url) : null,
     );
   };
 
   const handleDeleteCourse = async (id: string) => {
     if (!confirm("Are you sure you want to delete this course?")) return;
     const token = localStorage.getItem("token");
-    const res = await fetch(URLS.API.COURSES.UPDATE(id), {
+    const res = await fetch(URLS.API.COURSES.DELETE(id), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });

@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckCircle2, XCircle } from "lucide-react";
 import axios from "axios";
-
-import { BACKEND_URL } from '@/config/urls';
 
 interface QuizAttemptProps {
   quiz?: {
@@ -60,7 +58,7 @@ export default function QuizAttempt({ quiz, lessonId }: QuizAttemptProps) {
     setIsSubmitting(true);
     try {
       const res = await axios.post(
-        `${BACKEND_URL}/api/quiz-attempts`,
+        URLS.API.QUIZ_ATTEMPTS.CREATE,
         {
           quizId: quiz._id,
           lessonId,
@@ -70,7 +68,7 @@ export default function QuizAttempt({ quiz, lessonId }: QuizAttemptProps) {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const attempt = res.data.data;
@@ -124,12 +122,18 @@ export default function QuizAttempt({ quiz, lessonId }: QuizAttemptProps) {
                   <label htmlFor={`q${i}_opt${j}`}>
                     {opt}
                     {submitted && j === q.correct_answer && (
-                      <CheckCircle2 className="inline text-green-600 ml-2" size={18} />
+                      <CheckCircle2
+                        className="inline text-green-600 ml-2"
+                        size={18}
+                      />
                     )}
                     {submitted &&
                       j === answers[i] &&
                       j !== q.correct_answer && (
-                        <XCircle className="inline text-red-600 ml-2" size={18} />
+                        <XCircle
+                          className="inline text-red-600 ml-2"
+                          size={18}
+                        />
                       )}
                   </label>
                 </div>
@@ -144,13 +148,18 @@ export default function QuizAttempt({ quiz, lessonId }: QuizAttemptProps) {
           </Button>
         ) : (
           <div className="space-y-2">
-            <p className={`font-semibold ${passed ? "text-green-700" : "text-red-700"}`}>
-              ✅ You scored {score} out of {quiz.questions.length} ({percentage}%)
+            <p
+              className={`font-semibold ${passed ? "text-green-700" : "text-red-700"}`}
+            >
+              ✅ You scored {score} out of {quiz.questions.length} ({percentage}
+              %)
             </p>
             {passed ? (
               <p className="text-blue-600">🎉 You passed the quiz!</p>
             ) : (
-              <p className="text-red-600">❌ You did not pass. Try again if allowed.</p>
+              <p className="text-red-600">
+                ❌ You did not pass. Try again if allowed.
+              </p>
             )}
             <p className="text-sm text-muted-foreground">
               Attempt {attemptCount} / {maxAttempts}

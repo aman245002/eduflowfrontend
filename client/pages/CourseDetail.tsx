@@ -2,16 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BookOpen,
   Clock,
@@ -26,8 +21,6 @@ import {
 } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 
-import { BACKEND_URL } from '@/config/urls';
-
 export default function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -37,7 +30,7 @@ export default function CourseDetail() {
 
   const fetchFirstLessonId = async (courseId: string) => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/lessons/course/${courseId}`);
+      const res = await axios.get(URLS.API.LESSONS.COURSE_LESSONS(courseId));
       const lessons = res.data.data;
       return lessons?.[0]?._id || null;
     } catch (err) {
@@ -58,7 +51,7 @@ export default function CourseDetail() {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/courses/${id}`);
+        const res = await axios.get(URLS.API.COURSES.DETAIL(id));
         setCourseData(res.data.data);
       } catch (err) {
         console.error("Error fetching course:", err);
@@ -70,8 +63,18 @@ export default function CourseDetail() {
     if (id) fetchCourse();
   }, [id]);
 
-  if (loading) return <AppLayout><div className="p-8">Loading...</div></AppLayout>;
-  if (error) return <AppLayout><div className="p-8 text-red-500">{error}</div></AppLayout>;
+  if (loading)
+    return (
+      <AppLayout>
+        <div className="p-8">Loading...</div>
+      </AppLayout>
+    );
+  if (error)
+    return (
+      <AppLayout>
+        <div className="p-8 text-red-500">{error}</div>
+      </AppLayout>
+    );
   if (!courseData) return null;
 
   const instructor = courseData.created_by;
@@ -85,10 +88,16 @@ export default function CourseDetail() {
             <div className="lg:col-span-2 space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Badge variant="secondary" className="bg-primary/20 text-primary-foreground">
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/20 text-primary-foreground"
+                  >
                     {courseData.category}
                   </Badge>
-                  <Badge variant="outline" className="border-white/20 text-white">
+                  <Badge
+                    variant="outline"
+                    className="border-white/20 text-white"
+                  >
                     {courseData.difficulty}
                   </Badge>
                 </div>
@@ -126,7 +135,7 @@ export default function CourseDetail() {
                         src={
                           instructor.avatar_url?.startsWith("data:image")
                             ? instructor.avatar_url
-                            : `${BACKEND_URL}${instructor.avatar_url}`
+                            : URLS.FILES.THUMBNAIL(instructor.avatar_url)
                         }
                       />
                       <AvatarFallback>
@@ -138,7 +147,9 @@ export default function CourseDetail() {
                     </Avatar>
                     <div>
                       <p className="font-medium">{instructor.full_name}</p>
-                      <p className="text-sm text-slate-300">{instructor.email}</p>
+                      <p className="text-sm text-slate-300">
+                        {instructor.email}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -154,7 +165,7 @@ export default function CourseDetail() {
                   <img
                     src={
                       courseData.thumbnail_url
-                        ? `${BACKEND_URL}${courseData.thumbnail_url}`
+                        ? URLS.FILES.THUMBNAIL(courseData.thumbnail_url)
                         : "/default-thumb.jpg"
                     }
                     alt={courseData.title}
@@ -168,9 +179,15 @@ export default function CourseDetail() {
                 </div>
 
                 <CardContent className="p-6 space-y-4 text-center">
-                  <div className="text-3xl font-bold text-primary">${courseData.price}</div>
+                  <div className="text-3xl font-bold text-primary">
+                    ${courseData.price}
+                  </div>
 
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white" size="lg" disabled>
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    size="lg"
+                    disabled
+                  >
                     <BookOpen className="mr-2 h-5 w-5" />
                     Enrolled
                   </Button>
@@ -243,9 +260,18 @@ export default function CourseDetail() {
               <CardContent className="p-6 text-muted-foreground space-y-2">
                 {courseData.curriculum?.topics?.length > 0 ? (
                   <>
-                    <div><strong>Topics:</strong> {courseData.curriculum.topics.join(", ")}</div>
-                    <div><strong>Total Modules:</strong> {courseData.curriculum.total_modules}</div>
-                    <div><strong>Total Quizzes:</strong> {courseData.curriculum.total_quizzes}</div>
+                    <div>
+                      <strong>Topics:</strong>{" "}
+                      {courseData.curriculum.topics.join(", ")}
+                    </div>
+                    <div>
+                      <strong>Total Modules:</strong>{" "}
+                      {courseData.curriculum.total_modules}
+                    </div>
+                    <div>
+                      <strong>Total Quizzes:</strong>{" "}
+                      {courseData.curriculum.total_quizzes}
+                    </div>
                   </>
                 ) : (
                   <p>No curriculum available.</p>
@@ -263,7 +289,7 @@ export default function CourseDetail() {
                       src={
                         instructor.avatar_url?.startsWith("data:image")
                           ? instructor.avatar_url
-                          : `${BACKEND_URL}${instructor.avatar_url}`
+                          : URLS.FILES.THUMBNAIL(instructor.avatar_url)
                       }
                     />
                     <AvatarFallback>
@@ -274,8 +300,12 @@ export default function CourseDetail() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium text-lg">{instructor.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{instructor.email}</p>
+                    <p className="font-medium text-lg">
+                      {instructor.full_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {instructor.email}
+                    </p>
                   </div>
                 </div>
               </CardContent>

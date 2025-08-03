@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import AppLayout from "@/components/layout/AppLayout";
 import { toast } from "sonner";
-
-import { BACKEND_URL } from '@/config/urls'; // or your deployed backend
 
 interface Course {
   _id: string;
@@ -78,7 +76,7 @@ const ManageLessons = () => {
     if (!window.confirm("Are you sure you want to delete this quiz?")) return;
 
     try {
-      await axios.delete(`${BACKEND_URL}/api/quizzes/${quizId}`, {
+      await axios.delete(URLS.API.QUIZZES.DELETE(quizId), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -102,7 +100,7 @@ const ManageLessons = () => {
     window.location.href = `/edit-quiz/${quizId}`; // or use navigate()
   };
 
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [loadingLessons, setLoadingLessons] = useState(false);
@@ -128,12 +126,9 @@ const ManageLessons = () => {
   const fetchLessons = async (courseId: string) => {
     setLoadingLessons(true);
     try {
-      const res = await axios.get(
-        URLS.API.LESSONS.COURSE_LESSONS(courseId),
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await axios.get(URLS.API.LESSONS.COURSE_LESSONS(courseId), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = res.data.data || [];
       const hydrated = await Promise.all(
         data.map(async (lesson: Lesson) => {
@@ -161,7 +156,7 @@ const ManageLessons = () => {
 
   const fetchQuizById = async (quizId: string) => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/quizzes/${quizId}`, {
+      const res = await axios.get(URLS.API.QUIZZES.DETAIL(quizId), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -174,18 +169,25 @@ const ManageLessons = () => {
   };
 
   const handleAddLesson = async () => {
+    if (!selectedCourseId) {
+      toast.error("Please select a course first");
+      return;
+    }
+
     if (!newLesson.title.trim() || !newLesson.content.trim()) {
-      toast.error("⚠️ Please fill all lesson fields before submitting.");
+      toast.error("Please fill in all required fields");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      let uploadedFileInfo = null;
-      if (file) {
+      let uploadedFilesInfo = [];
+      if (files.length > 0) {
         const uploadFormData = new FormData();
-        uploadFormData.append("file", file);
+        files.forEach((file) => {
+          uploadFormData.append("files", file);
+        });
         const uploadRes = await axios.post(
           URLS.API.LESSONS.UPLOAD,
           uploadFormData,
@@ -196,7 +198,7 @@ const ManageLessons = () => {
             },
           },
         );
-        uploadedFileInfo = uploadRes.data.data;
+        uploadedFilesInfo = uploadRes.data.data;
       }
 
       const formData = new FormData();
@@ -206,26 +208,22 @@ const ManageLessons = () => {
       formData.append("duration", String(newLesson.duration));
       formData.append("course_id", selectedCourseId);
 
-      if (uploadedFileInfo) {
-        const attachmentWithFlag = {
-          ...uploadedFileInfo,
+      if (uploadedFilesInfo.length > 0) {
+        const attachmentsWithFlags = uploadedFilesInfo.map((fileInfo) => ({
+          ...fileInfo,
           is_downloadable: isDownloadable,
-        };
-        formData.append("attachments", JSON.stringify([attachmentWithFlag]));
+        }));
+        formData.append("attachments", JSON.stringify(attachmentsWithFlags));
       } else {
         formData.append("attachments", JSON.stringify([]));
       }
 
-      const lessonRes = await axios.post(
-        URLS.API.LESSONS.UPLOAD,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
+      const lessonRes = await axios.post(URLS.API.LESSONS.CREATE, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
-      );
+      });
 
       const createdLesson = lessonRes.data.data;
 
@@ -262,7 +260,7 @@ const ManageLessons = () => {
         order: newLesson.order + 1,
         duration: 10,
       });
-      setFile(null);
+      setFiles([]);
       setQuizEnabled(false);
       setQuizData({
         title: "",
@@ -298,23 +296,21 @@ const ManageLessons = () => {
     setIsSubmitting(true);
 
     try {
-      let uploadedFileInfo = null;
+      let uploadedFilesInfo = [];
 
-      // 🔼 Upload the new file if provided
-      if (file) {
+      // 🔼 Upload the new files if provided
+      if (files.length > 0) {
         const formData = new FormData();
-        formData.append("file", file);
-        const uploadRes = await axios.post(
-          `${BACKEND_URL}/api/lessons/upload`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
+        files.forEach((file) => {
+          formData.append("files", file);
+        });
+        const uploadRes = await axios.post(URLS.API.LESSONS.UPLOAD, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
-        );
-        uploadedFileInfo = uploadRes.data.data;
+        });
+        uploadedFilesInfo = uploadRes.data.data;
       }
 
       // 🧠 Create FormData payload for lesson update
@@ -326,19 +322,19 @@ const ManageLessons = () => {
       formData.append("course_id", selectedCourseId);
 
       // 🧩 Include attachments
-      if (uploadedFileInfo) {
-        const attachmentWithFlag = {
-          ...uploadedFileInfo,
+      if (uploadedFilesInfo.length > 0) {
+        const attachmentsWithFlags = uploadedFilesInfo.map((fileInfo) => ({
+          ...fileInfo,
           is_downloadable: isDownloadable,
-        };
-        formData.append("attachments", JSON.stringify([attachmentWithFlag]));
+        }));
+        formData.append("attachments", JSON.stringify(attachmentsWithFlags));
       } else {
         formData.append("attachments", JSON.stringify([]));
       }
 
       // 🔁 Update lesson via PUT
       const lessonRes = await axios.put(
-        `${BACKEND_URL}/api/lessons/${editingLesson._id}`,
+        URLS.API.LESSONS.UPDATE(editingLesson._id),
         formData,
         {
           headers: {
@@ -350,7 +346,7 @@ const ManageLessons = () => {
 
       // 🔄 Reset UI state
       setEditingLesson(null);
-      setFile(null);
+      setFiles([]);
       setNewLesson({
         title: "",
         content: "",
@@ -395,7 +391,7 @@ const ManageLessons = () => {
         order: editingLesson.order,
         duration: editingLesson.duration,
       });
-      setFile(null);
+      setFiles([]);
     }
   }, [editingLesson]);
 
@@ -477,24 +473,57 @@ const ManageLessons = () => {
                 <Input
                   type="file"
                   accept="video/*,application/pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
                   disabled={isSubmitting}
                 />
+                <p className="text-sm text-gray-600">
+                  📁 File size limits: PDF (50MB max), MP4 (2GB max), up to 10
+                  files per lesson
+                </p>
                 <label className="flex items-center space-x-2 mt-1">
                   <input
                     type="checkbox"
                     checked={isDownloadable}
                     onChange={(e) => setIsDownloadable(e.target.checked)}
                   />
-                  <span>Mark this file as downloadable</span>
+                  <span>Mark files as downloadable</span>
                 </label>
 
-                {file && file.type.startsWith("video/") && (
-                  <video className="w-full mt-2" controls height="240">
-                    <source src={URL.createObjectURL(file)} type={file.type} />
-                    Your browser does not support the video tag.
-                  </video>
+                {/* Show selected files */}
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-medium">
+                      Selected Files ({files.length}):
+                    </p>
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                      >
+                        <span className="text-sm truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFiles(files.filter((_, i) => i !== index))
+                          }
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
+
+                {files.length > 0 &&
+                  files.some((file) => file.type.startsWith("video/")) && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600">
+                        Video files will be available for streaming
+                      </p>
+                    </div>
+                  )}
 
                 {/* ✅ Add Quiz Option */}
                 <label className="flex items-center space-x-2">
@@ -607,13 +636,13 @@ const ManageLessons = () => {
                       variant="outline"
                       onClick={() => {
                         setEditingLesson(null);
+                        setFiles([]);
                         setNewLesson({
                           title: "",
                           content: "",
                           order: newLesson.order + 1,
                           duration: 10,
                         });
-                        setFile(null);
                       }}
                     >
                       Cancel
