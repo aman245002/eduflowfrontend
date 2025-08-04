@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import axios from "axios";
 
 import {
   Select,
@@ -54,9 +55,8 @@ export default function Courses() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await fetch(URLS.API.COURSES.LIST);
-        const data = await res.json();
-        if (data.success) setCourses(data.data);
+        const res = await axios.get(URLS.API.COURSES.LIST);
+        if (res.data.success) setCourses(res.data.data);
       } catch (err) {
         console.error("Failed to fetch courses", err);
         toast.error("Failed to load courses.");
@@ -66,17 +66,13 @@ export default function Courses() {
     const fetchEnrolled = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(
-          URLS.API.ENROLLMENTS.MY_COURSES,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+        const res = await axios.get(URLS.API.ENROLLMENTS.MY_COURSES, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        );
-        const enrolledData = await res.json();
-        if (enrolledData.success) {
-          const ids = new Set<string>(enrolledData.data.map((c: any) => c._id));
+        });
+        if (res.data.success) {
+          const ids = new Set<string>(res.data.data.map((c: any) => c._id));
           setEnrolledCourseIds(ids);
         }
       } catch (err) {
@@ -92,23 +88,22 @@ export default function Courses() {
   const handleEnroll = async (courseId: string) => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(
+      const res = await axios.post(
         URLS.API.COURSES.ENROLL(courseId),
+        {},
         {
-          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
         },
       );
 
-      const data = await res.json();
-      if (data.success) {
+      if (res.data.success) {
         toast.success("Enrollment successful!");
         setEnrolledCourseIds((prev) => new Set([...prev, courseId]));
         navigate(`/course/${courseId}`);
       } else {
-        toast.error(data.message || "Enrollment failed");
+        toast.error(res.data.message || "Enrollment failed");
       }
     } catch (err) {
       console.error("Enrollment error:", err);
