@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/AuthContext";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,18 +38,41 @@ export default function Profile() {
     if (fileInputRef.current) fileInputRef.current.click();
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await fetch(URLS.API.USERS.UPLOAD_AVATAR, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to upload avatar");
+
+      // Update the edited data with the new avatar URL
       setEditedData((prev: any) => ({
         ...prev,
-        avatar_url: reader.result,
+        avatar_url: data.data.avatar_url,
       }));
-    };
-    reader.readAsDataURL(file);
+
+      // Update the user context
+      if (user) {
+        user.avatar_url = data.data.avatar_url;
+      }
+
+      setProfileMessage("Avatar uploaded successfully!");
+    } catch (error: any) {
+      setProfileMessage(error.message);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -63,20 +86,17 @@ export default function Profile() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        URLS.API.AUTH.CHANGE_PASSWORD,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            current_password: passwordData.current_password,
-            new_password: passwordData.new_password,
-          }),
+      const res = await fetch(URLS.API.AUTH.CHANGE_PASSWORD, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          current_password: passwordData.current_password,
+          new_password: passwordData.new_password,
+        }),
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to change password");
@@ -104,7 +124,6 @@ export default function Profile() {
         },
         body: JSON.stringify({
           full_name: editedData.full_name,
-          avatar_url: editedData.avatar_url,
           bio: editedData.profile?.bio || "",
         }),
       });
@@ -133,12 +152,9 @@ export default function Profile() {
       const fetchEnrolledCourses = async () => {
         try {
           const token = localStorage.getItem("token");
-          const res = await fetch(
-            URLS.API.ENROLLMENTS.MY_COURSES,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
+          const res = await fetch(URLS.API.ENROLLMENTS.MY_COURSES, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
           const data = await res.json();
           setEnrolledCourses(data.data || []);
           return data.data || [];
@@ -154,12 +170,9 @@ export default function Profile() {
 
         const results = await Promise.all(
           courses.map((course: any) =>
-            fetch(
-              URLS.API.ANALYTICS.PROGRESS(course._id),
-              {
-                headers,
-              },
-            )
+            fetch(URLS.API.ANALYTICS.PROGRESS(course._id), {
+              headers,
+            })
               .then((res) => res.json())
               .then((data) => ({
                 course,

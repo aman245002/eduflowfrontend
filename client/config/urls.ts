@@ -42,6 +42,7 @@ export const URLS = {
     USERS: {
       LIST: buildUrl("/api/users"),
       PROFILE: buildUrl("/api/users/profile"),
+      UPLOAD_AVATAR: buildUrl("/api/users/upload-avatar"),
       DETAIL: (id: string) => buildUrl(`/api/users/${id}`),
       UPDATE: (id: string) => buildUrl(`/api/users/${id}`),
       DELETE: (id: string) => buildUrl(`/api/users/${id}`),
