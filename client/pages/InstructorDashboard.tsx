@@ -95,8 +95,8 @@ export default function InstructorDashboard() {
     const formData = new FormData();
     const curriculum = {
       topics: newCourse.curriculumTopics.split(",").map((t) => t.trim()),
-      total_modules: parseInt(newCourse.totalModules),
-      total_quizzes: parseInt(newCourse.totalQuizzes),
+      total_modules: parseInt(newCourse.totalModules) || 0,
+      total_quizzes: parseInt(newCourse.totalQuizzes) || 0,
     };
 
     formData.append("title", newCourse.title);
