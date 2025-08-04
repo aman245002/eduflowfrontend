@@ -15,7 +15,19 @@ export const buildUrl = (endpoint: string): string => {
 export const buildFileUrl = (filePath: string): string => {
   if (!filePath) return "";
   if (filePath.startsWith("http")) return filePath;
-  return `${BACKEND_URL}${filePath}`;
+
+  // Check if we're in production and should use S3
+  const isProduction = import.meta.env.PROD;
+  const s3BucketName = import.meta.env.VITE_S3_BUCKET_NAME;
+  const s3Region = import.meta.env.VITE_S3_REGION || "ap-south-1";
+
+  if (isProduction && s3BucketName) {
+    // Use S3 URL in production
+    return `https://${s3BucketName}.s3.${s3Region}.amazonaws.com${filePath}`;
+  } else {
+    // Use local URL in development
+    return `${BACKEND_URL}${filePath}`;
+  }
 };
 
 // Common URL patterns
