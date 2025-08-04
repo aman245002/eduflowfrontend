@@ -55,7 +55,16 @@ export default function Courses() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await axios.get(URLS.API.COURSES.LIST);
+        // Debug logging
+        console.log("🔧 Debug - VITE_API_URL:", import.meta.env.VITE_API_URL);
+        console.log("🔧 Debug - URLS.API.COURSES.LIST:", URLS.API.COURSES.LIST);
+        console.log("🔧 Debug - BACKEND_URL:", URLS.BACKEND_URL);
+
+        // Temporary fix: Use hardcoded CloudFront URL
+        const apiUrl = "https://d2iih4o3xwdr0p.cloudfront.net/api/courses";
+        console.log("🔧 Debug - Using hardcoded URL:", apiUrl);
+
+        const res = await axios.get(apiUrl);
         if (res.data.success) setCourses(res.data.data);
       } catch (err) {
         console.error("Failed to fetch courses", err);
@@ -66,7 +75,9 @@ export default function Courses() {
     const fetchEnrolled = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(URLS.API.ENROLLMENTS.MY_COURSES, {
+        const enrolledUrl =
+          "https://d2iih4o3xwdr0p.cloudfront.net/api/enrollments/my-courses";
+        const res = await axios.get(enrolledUrl, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -88,8 +99,9 @@ export default function Courses() {
   const handleEnroll = async (courseId: string) => {
     const token = localStorage.getItem("token");
     try {
+      const enrollUrl = `https://d2iih4o3xwdr0p.cloudfront.net/api/enrollments/enroll/${courseId}`;
       const res = await axios.post(
-        URLS.API.COURSES.ENROLL(courseId),
+        enrollUrl,
         {},
         {
           headers: {
