@@ -112,7 +112,7 @@ export default function InstructorDashboard() {
     const token = localStorage.getItem("token");
     const url = isEditMode
       ? URLS.API.COURSES.UPDATE(editingCourse?._id)
-      : URLS.API.COURSES.LIST;
+      : URLS.API.COURSES.CREATE;
     const method = isEditMode ? "PUT" : "POST";
 
     const res = await fetch(url, {
