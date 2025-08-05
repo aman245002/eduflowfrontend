@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import AppLayout from "@/components/layout/AppLayout";
-import { URLS } from '@/config/urls';
+import { URLS } from "@/config/urls";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,16 +81,16 @@ export default function Affiliations() {
       if (editingId) {
         await axios.put(URLS.API.AFFILIATIONS.UPDATE(editingId), fd, {
           headers: {
-            "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
+            "X-Auth-Token": token,
           },
         });
         toast.success("Affiliation updated successfully");
       } else {
         await axios.post(URLS.API.AFFILIATIONS.LIST, fd, {
           headers: {
-            "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
+            "X-Auth-Token": token,
           },
         });
         toast.success("Affiliation created successfully");
@@ -123,7 +123,7 @@ export default function Affiliations() {
   };
 
   const filtered = affiliations.filter((aff) =>
-    categoryFilter === "All" ? true : aff.category === categoryFilter
+    categoryFilter === "All" ? true : aff.category === categoryFilter,
   );
 
   return (
@@ -175,7 +175,7 @@ export default function Affiliations() {
                   <SelectItem key={cat} value={cat}>
                     {cat}
                   </SelectItem>
-                )
+                ),
               )}
             </SelectContent>
           </Select>

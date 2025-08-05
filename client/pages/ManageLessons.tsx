@@ -194,7 +194,7 @@ const ManageLessons = () => {
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
+              "X-Auth-Token": token,
             },
           },
         );
@@ -221,7 +221,6 @@ const ManageLessons = () => {
       const lessonRes = await axios.post(URLS.API.LESSONS.CREATE, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -307,7 +306,7 @@ const ManageLessons = () => {
         const uploadRes = await axios.post(URLS.API.LESSONS.UPLOAD, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            "X-Auth-Token": token,
           },
         });
         uploadedFilesInfo = uploadRes.data.data;
@@ -339,7 +338,7 @@ const ManageLessons = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            "X-Auth-Token": token,
           },
         },
       );

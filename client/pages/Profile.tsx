@@ -51,6 +51,7 @@ export default function Profile() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "X-Auth-Token": token,
         },
         body: formData,
       });
