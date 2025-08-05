@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     CREATE: "/api/lessons",
     UPDATE: (id: string) => `/api/lessons/${id}`,
     DELETE: (id: string) => `/api/lessons/${id}`,
+    UPLOAD: "/api/lessons/upload",
   },
 
   // Quizzes
@@ -59,6 +60,8 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/api/users/${id}`,
     UPDATE: (id: string) => `/api/users/${id}`,
     DELETE: (id: string) => `/api/users/${id}`,
+    PROFILE: "/api/users/profile",
+    UPLOAD_AVATAR: "/api/users/upload-avatar",
   },
 
   // Certificates
@@ -124,9 +127,21 @@ export const getAuthHeaders = (token?: string) => {
   };
 
   if (token) {
-    // Use custom header for CloudFront compatibility
+    // Use both headers for maximum compatibility
     headers["X-Auth-Token"] = token;
-    // Keep Authorization as fallback for direct API calls
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
+// Upload Headers (for file uploads)
+export const getUploadHeaders = (token?: string) => {
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    // Use both headers for maximum compatibility
+    headers["X-Auth-Token"] = token;
     headers["Authorization"] = `Bearer ${token}`;
   }
 
