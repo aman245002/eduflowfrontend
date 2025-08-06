@@ -105,8 +105,46 @@ const ManageLessons = () => {
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const token = localStorage.getItem("token");
+
+  // File validation function
+  const validateFiles = (selectedFiles: File[]) => {
+    const errors: string[] = [];
+    
+    selectedFiles.forEach((file) => {
+      const isVideo = file.type.startsWith('video/');
+      const isPDF = file.type === 'application/pdf';
+      const maxSizeMB = isVideo ? 2048 : 50; // 2GB for videos, 50MB for PDFs
+      const maxSizeBytes = maxSizeMB * 1024 * 1024;
+      
+      if (!isVideo && !isPDF) {
+        errors.push(`${file.name}: Only video and PDF files are allowed`);
+      }
+      
+      if (file.size > maxSizeBytes) {
+        errors.push(`${file.name}: File size exceeds ${maxSizeMB}MB limit`);
+      }
+    });
+    
+    return errors;
+  };
+
+  // Handle file selection with validation
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const errors = validateFiles(selectedFiles);
+    
+    if (errors.length > 0) {
+      errors.forEach(error => toast.error(error));
+      e.target.value = ''; // Clear the input
+      return;
+    }
+    
+    setFiles(selectedFiles);
+    toast.success(`Selected ${selectedFiles.length} file(s)`);
+  };
 
   const fetchCourses = async () => {
     setLoadingCourses(true);
@@ -188,17 +226,46 @@ const ManageLessons = () => {
         files.forEach((file) => {
           uploadFormData.append("files", file);
         });
-        const uploadRes = await axios.post(
-          URLS.API.LESSONS.UPLOAD,
-          uploadFormData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "X-Auth-Token": token,
+        
+        // Show upload progress for large files
+        const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+        const isLargeUpload = totalSize > 50 * 1024 * 1024; // 50MB threshold
+        
+        if (isLargeUpload) {
+          toast.info("📤 Uploading large files... This may take a few minutes.");
+        }
+        
+        try {
+          const uploadRes = await axios.post(
+            URLS.API.LESSONS.UPLOAD,
+            uploadFormData,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "X-Auth-Token": token,
+              },
+              timeout: 300000, // 5 minutes timeout for large uploads
+              onUploadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                  const progress = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                  );
+                  setUploadProgress(progress);
+                }
+              },
             },
-          },
-        );
-        uploadedFilesInfo = uploadRes.data.data;
+          );
+          uploadedFilesInfo = uploadRes.data.data;
+          setUploadProgress(0);
+        } catch (uploadError: any) {
+          setUploadProgress(0);
+          if (uploadError.response?.status === 413) {
+            toast.error("❌ File too large. Maximum size: 2GB for videos, 50MB for PDFs");
+          } else {
+            toast.error(`❌ Upload failed: ${uploadError.response?.data?.message || uploadError.message}`);
+          }
+          throw uploadError;
+        }
       }
 
       const formData = new FormData();
@@ -473,13 +540,30 @@ const ManageLessons = () => {
                   type="file"
                   accept="video/*,application/pdf"
                   multiple
-                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                  onChange={handleFileChange}
                   disabled={isSubmitting}
                 />
                 <p className="text-sm text-gray-600">
                   📁 File size limits: PDF (50MB max), MP4 (2GB max), up to 10
                   files per lesson
                 </p>
+                
+                {/* Upload Progress Bar */}
+                {uploadProgress > 0 && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Uploading files...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                
                 <label className="flex items-center space-x-2 mt-1">
                   <input
                     type="checkbox"
@@ -489,7 +573,7 @@ const ManageLessons = () => {
                   <span>Mark files as downloadable</span>
                 </label>
 
-                {/* Show selected files */}
+                {/* Show selected files with size information */}
                 {files.length > 0 && (
                   <div className="mt-2 space-y-2">
                     <p className="text-sm font-medium">
@@ -500,13 +584,18 @@ const ManageLessons = () => {
                         key={index}
                         className="flex items-center justify-between p-2 bg-gray-50 rounded"
                       >
-                        <span className="text-sm truncate">{file.name}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm truncate block">{file.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() =>
                             setFiles(files.filter((_, i) => i !== index))
                           }
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 ml-2"
                         >
                           Remove
                         </button>

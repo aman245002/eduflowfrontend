@@ -6,9 +6,17 @@ import { API_BASE_URL } from "./api";
 // Backend URL - will be replaced during deployment
 export const BACKEND_URL = API_BASE_URL;
 
+// Direct backend URL for large file uploads (bypasses CloudFront)
+export const DIRECT_BACKEND_URL = import.meta.env.VITE_DIRECT_BACKEND_URL || API_BASE_URL;
+
 // Utility function to build full URLs
 export const buildUrl = (endpoint: string): string => {
   return `${BACKEND_URL}${endpoint}`;
+};
+
+// Utility function to build direct backend URLs for large uploads
+export const buildDirectUrl = (endpoint: string): string => {
+  return `${DIRECT_BACKEND_URL}${endpoint}`;
 };
 
 // Utility function to build file URLs
@@ -83,7 +91,7 @@ export const URLS = {
     },
     LESSONS: {
       LIST: buildUrl("/api/lessons"),
-      UPLOAD: buildUrl("/api/lessons/upload"),
+      UPLOAD: buildDirectUrl("/api/lessons/upload"), // Use direct backend for large uploads
       COURSE_LESSONS: (courseId: string) =>
         buildUrl(`/api/lessons/course/${courseId}`),
       CREATE: buildUrl("/api/lessons"),
